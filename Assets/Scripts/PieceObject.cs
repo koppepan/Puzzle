@@ -12,48 +12,52 @@ using System.Collections;
 public class PieceObject : MonoBehaviour
 {
 
-	private enum PuzzleState
+	private enum PieceState
 	{
 		STOP = 0,
-		MOVE
+		MOVE,
+		SELECT
 	};
 
-	private	PuzzleColor		mColor;		//!< パズルの種類
+	private	PieceColor		mColor;		//!< パズルの種類
 
-	private Animator		mAnime;
+	private Animator		mAnime;		//!< 色変更のためのアニメーター
+	private SpriteRenderer	mRender;	//!< 描画順などをいじるため
 
-	private PuzzleState		mState;		//!< 遷移
+	private PiecePos		mPos;		//!< 現在位置
+
+	private PieceState		mState;		//!< 遷移
 	private float			mMoveSpeed;	//!< 移動スピード
 	private Vector2			mTargetPos;	//!< 移動先
 
 	// Use this for initialization
 	void Awake () {
 		mAnime = GetComponent<Animator>();
+		mRender = GetComponent<SpriteRenderer>();
 		mMoveSpeed = 0;
 		mTargetPos = new Vector2(0,0);
-		mState = PuzzleState.STOP;
+		mState = PieceState.STOP;
 	}
 
-	/*! ピースの色指定
-        @param	color	色
+	/*! 現在の遷移取得
+        @return		color	色
     */
-	public void SetColor(PuzzleColor color)
+	public int GetState()
 	{
-		if (mColor != color)
-		{
-			mColor = color;
-			mAnime.Play(mColor.ToString());
-		}
+		return (int)mState;
 	}
 	
 	// Update is called once per frame
 	public void SelfUpdate () {
 		switch (mState)
 		{
-			case PuzzleState.STOP:
+			case PieceState.STOP:
 				break;
-			case PuzzleState.MOVE:
+			case PieceState.MOVE:
 				MoveUpdate();
+				break;
+			case PieceState.SELECT:
+				SelectUpdate();
 				break;
 		}
 	}
@@ -66,7 +70,7 @@ public class PieceObject : MonoBehaviour
 		// ターゲットにたどり着いたらストップ
 		if (nowPos == mTargetPos)
 		{
-			mState = PuzzleState.STOP;
+			mState = PieceState.STOP;
 			return;
 		}
 
@@ -81,6 +85,13 @@ public class PieceObject : MonoBehaviour
 			nowPos.y = PieceMove(nowPos.y, mTargetPos.y, mMoveSpeed);
 
 		transform.position = nowPos;
+	}
+
+	/*! セレクトされているピースをタッチされてポイントに追従	*/
+	private void SelectUpdate()
+	{
+		Vector2 pos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
+		transform.position = pos;
 	}
 
 	/*! ピースの移動
@@ -109,10 +120,41 @@ public class PieceObject : MonoBehaviour
         @param	y		y軸
 		@param	speed	移動速度
     */
-	public void SetPosition(int x, int y, float speed)
+	public void SetPosition(PiecePos pos, float speed)
 	{
-		mState = PuzzleState.MOVE;
+		mState = PieceState.MOVE;
 		mMoveSpeed = speed;
-		mTargetPos = new Vector2(x * 1.05f, y * 1.05f);
+		mPos = pos;
+		mTargetPos = new Vector2(mPos.x * 1.05f, mPos.y * 1.05f);
+	}
+
+	/*! ピースの座標	*/
+	public PiecePos PicecPosition
+	{
+		get { return mPos; }
+		set { mPos = value; }
+	}
+
+	/*! ピースの色指定
+        @param		value	色
+		@return		color	色
+    */
+	public PieceColor Color
+	{
+		get { return mColor;}
+		set 
+		{
+			mColor = value;
+			mAnime.Play(mColor.ToString());
+			name = mColor.ToString();
+		}
+	}
+
+	/*! ピースを選択された	*/
+	public void Catch()
+	{
+		mState = PieceState.SELECT;
+		mRender.sortingOrder = 1;
+		gameObject.layer = LayerMask.NameToLayer("Select");
 	}
 }

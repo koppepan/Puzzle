@@ -9,7 +9,7 @@ using System.Collections;
  * @author	Daichi Horio
 */
 //===================================================
-public enum PuzzleColor
+public enum PieceColor
 {
 	NONE = 0,
 	Red,
@@ -20,14 +20,47 @@ public enum PuzzleColor
 	Heart
 };
 
+public struct PiecePos
+{
+	public int x;
+	public int y;
+
+	public PiecePos(int i, int j)
+	{
+		x = i;
+		y = j;
+	}
+};
+
 public class PuzzleController : MonoBehaviour {
 
-	public GameObject PiecePrefab;
+	private enum PuzzleState
+	{
+		NONE,
+		SELECT,
+		MOVE,
+		END
+	};
 
-	private PieceObject[,]	mPieces = new PieceObject[6,5];
+	public GameObject PiecePrefab;		//!< ピースプレハブ
+
+	private PuzzleState		mState;		//!< 遷移
+
+	private PieceObject mObj;
+
+	private PieceObject[,]	mPieces = new PieceObject[6,5];		//!< ピース管理用
+	private ArrayList		mActivList = new ArrayList();		//!< 現在動いているピースリスト
 
 	// Use this for initialization
 	void Start () {
+		Init();
+	}
+
+	/*! 初期化  */
+	private void Init()
+	{
+		mState = PuzzleState.SELECT;
+
 		for (int i = 0; i < mPieces.GetLength(0); i++)
 		{
 			for (int j = 0; j < mPieces.GetLength(1); j++)
@@ -37,16 +70,118 @@ public class PuzzleController : MonoBehaviour {
 				obj.transform.parent = transform;
 
 				mPieces[i, j] = obj.GetComponent<PieceObject>();
-				mPieces[i, j].SetPosition(i, j, 1);
-				mPieces[i, j].SetColor((PuzzleColor)Random.Range(1,6));
+				mPieces[i, j].SetPosition(new PiecePos(i, j), 1);
+				mPieces[i, j].Color = (PieceColor)Random.Range(1, 6);
+
+				mActivList.Add(mPieces[i, j]);
 			}
 		}
 	}
 	
 	// Update is called once per frame
 	void Update () {
-		for (int i = 0; i < mPieces.GetLength(0); i++)
-			for (int j = 0; j < mPieces.GetLength(1); j++)
-				mPieces[i, j].SelfUpdate();
+		
+		GameObject obj = null;
+
+		switch (mState)
+		{
+			case PuzzleState.NONE:
+				break;
+
+			case PuzzleState.SELECT:
+				if(Input.GetMouseButtonDown(0))
+				{
+					obj = MouseUpdate();
+				}
+				
+				if (obj != null)
+				{
+					mObj = obj.GetComponent<PieceObject>();
+					mObj.Catch();
+					mActivList.Add(mObj);
+					mState = PuzzleState.MOVE;
+				}
+				break;
+
+			case PuzzleState.MOVE:
+				if (Input.GetMouseButtonUp(0))
+				{
+					mObj.SetPosition(mObj.PicecPosition, 10);
+					mState = PuzzleState.SELECT;
+				}
+
+				obj = MouseUpdate();
+				if (obj != null)
+				{
+					PieceObject p = obj.GetComponent<PieceObject>();
+					if (p.GetState() == 0)
+					{
+						PiecePos pos = p.PicecPosition;
+						p.SetPosition(mObj.PicecPosition, 5);
+						mObj.PicecPosition = pos;
+						mActivList.Add(p);
+					}
+				}
+				break;
+		}
+		TouchUpdate();
+		
+		PieceUpdate();
+	}
+
+	/*! 各ピースの更新 
+		動いてるピースだけ更新する
+	 */
+	private void PieceUpdate()
+	{
+		ArrayList deadList = new ArrayList();
+		foreach (PieceObject obj in mActivList)
+		{
+			obj.SelfUpdate();
+
+			if (obj.GetState() == 0)
+				deadList.Add(obj);
+		}
+
+		foreach (PieceObject obj in deadList)
+		{
+			mActivList.Remove(obj);
+		}
+	}
+
+	/*! タッチしてオブジェクトを返す 
+		@return タッチされたオブジェクト
+	 */
+	private GameObject TouchUpdate()
+	{
+		if(Input.touchCount <= 0)
+			return null;
+
+		Touch touch = Input.GetTouch(0);
+		if(touch.phase == TouchPhase.Began)
+		{
+			Vector2 worldPoint2d = Camera.main.ScreenToWorldPoint(touch.position);
+			Collider2D collider2D = Physics2D.OverlapPoint(worldPoint2d);
+
+			if (collider2D)
+				return collider2D.transform.gameObject;
+		}
+
+		return null;
+	}
+
+	/*! マウスクリックしてオブジェクトを返す 
+		@return クリックされたオブジェクト
+	 */
+	private GameObject MouseUpdate()
+	{
+		int mask = 1 << LayerMask.NameToLayer("Piece");
+		Vector2 worldPoint2d = Camera.main.ScreenToWorldPoint(Input.mousePosition);
+		Collider2D collider2D = Physics2D.OverlapPoint(worldPoint2d, mask);
+		
+		if (collider2D)
+			return collider2D.transform.gameObject;
+
+		return null;
 	}
 }
