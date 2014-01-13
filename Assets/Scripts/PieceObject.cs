@@ -157,4 +157,11 @@ public class PieceObject : MonoBehaviour
 		mRender.sortingOrder = 1;
 		gameObject.layer = LayerMask.NameToLayer("Select");
 	}
+
+	public void Relese()
+	{
+		mRender.sortingOrder = 0;
+		gameObject.layer = LayerMask.NameToLayer("Piece");
+		SetPosition(mPos, 10);
+	}
 }

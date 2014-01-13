@@ -104,9 +104,9 @@ public class PuzzleController : MonoBehaviour {
 				break;
 
 			case PuzzleState.MOVE:
-				if (Input.GetMouseButtonUp(0))
+				if (Input.GetMouseButtonUp(0) || mObj.transform.position.y > 5.0f)
 				{
-					mObj.SetPosition(mObj.PicecPosition, 10);
+					mObj.Relese();
 					mState = PuzzleState.SELECT;
 				}
 
@@ -116,10 +116,7 @@ public class PuzzleController : MonoBehaviour {
 					PieceObject p = obj.GetComponent<PieceObject>();
 					if (p.GetState() == 0)
 					{
-						PiecePos pos = p.PicecPosition;
-						p.SetPosition(mObj.PicecPosition, 5);
-						mObj.PicecPosition = pos;
-						mActivList.Add(p);
+						ReplacePiece(mObj, p);
 					}
 				}
 				break;
@@ -147,6 +144,22 @@ public class PuzzleController : MonoBehaviour {
 		{
 			mActivList.Remove(obj);
 		}
+	}
+
+	/*! ピースの入れ替え	 */
+	private void ReplacePiece(PieceObject p1, PieceObject p2)
+	{
+		PiecePos pos1 = p1.PicecPosition;
+		PiecePos pos2 = p2.PicecPosition;
+
+		PieceObject obj = mPieces[pos2.x, pos2.y];
+		mPieces[pos2.x, pos2.y] = p1;
+		mPieces[pos1.x, pos1.y] = obj;
+
+		p2.SetPosition(pos1, 5);
+		p1.PicecPosition = pos2;
+
+		mActivList.Add(p2);
 	}
 
 	/*! タッチしてオブジェクトを返す 
