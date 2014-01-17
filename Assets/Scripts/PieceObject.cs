@@ -16,7 +16,8 @@ public class PieceObject : MonoBehaviour
 	{
 		STOP = 0,
 		MOVE,
-		SELECT
+		SELECT,
+		DEATH
 	};
 
 	private	PieceColor		mColor;		//!< パズルの種類
@@ -30,6 +31,8 @@ public class PieceObject : MonoBehaviour
 	private float			mMoveSpeed;	//!< 移動スピード
 	private Vector2			mTargetPos;	//!< 移動先
 
+	private bool			mDead;		//!< 死んだフラグ
+
 	// Use this for initialization
 	void Awake () {
 		mAnime = GetComponent<Animator>();
@@ -37,6 +40,8 @@ public class PieceObject : MonoBehaviour
 		mMoveSpeed = 0;
 		mTargetPos = new Vector2(0,0);
 		mState = PieceState.STOP;
+
+		mDead = false;
 	}
 
 	/*! 現在の遷移取得
@@ -45,6 +50,11 @@ public class PieceObject : MonoBehaviour
 	public int GetState()
 	{
 		return (int)mState;
+	}
+
+	public bool Dead
+	{
+		get { return mDead; }
 	}
 	
 	// Update is called once per frame
@@ -58,6 +68,9 @@ public class PieceObject : MonoBehaviour
 				break;
 			case PieceState.SELECT:
 				SelectUpdate();
+				break;
+			case PieceState.DEATH:
+				DeathUpdate();
 				break;
 		}
 	}
@@ -92,6 +105,18 @@ public class PieceObject : MonoBehaviour
 	{
 		Vector2 pos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
 		transform.position = pos;
+	}
+
+	private void DeathUpdate()
+	{
+		Vector3 s = transform.localScale;
+		transform.localScale = new Vector3(s.x - 0.1f, s.y - 0.1f, 1);
+
+		if (transform.localScale.x < 0.1f)
+		{
+			mDead = true;
+			mState = PieceState.STOP;
+		}
 	}
 
 	/*! ピースの移動
@@ -163,5 +188,12 @@ public class PieceObject : MonoBehaviour
 		mRender.sortingOrder = 0;
 		gameObject.layer = LayerMask.NameToLayer("Piece");
 		SetPosition(mPos, 10);
+	}
+
+	public void Death()
+	{
+		mState = PieceState.DEATH;
+		mRender.sortingOrder = -1;
+		gameObject.layer = LayerMask.NameToLayer("Default");
 	}
 }
