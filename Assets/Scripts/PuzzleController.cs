@@ -316,7 +316,7 @@ public class PuzzleController : MonoBehaviour
 		{
 			//Destroy(mPieces[pos.x, pos.y + i].gameObject);
 			mPieces[pos.x, pos.y + i].Death();
-			mActivList.Add(mPieces[pos.x, pos.y + 1]);
+			mActivList.Add(mPieces[pos.x, pos.y + i]);
 			//mPieces[pos.x, pos.y + i] = null;
 		}
 	}
