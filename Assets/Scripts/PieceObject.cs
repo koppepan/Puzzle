@@ -100,17 +100,20 @@ public class PieceObject : MonoBehaviour
 		transform.position = nowPos;
 	}
 
-	/*! セレクトされているピースをタッチされてポイントに追従	*/
+	/*! セレクトされているピースをタッチされたポイントに追従	*/
 	private void SelectUpdate()
 	{
 		Vector2 pos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
 		transform.position = pos;
 	}
 
+	/*! ピースを消す	*/
 	private void DeathUpdate()
 	{
 		Vector3 s = transform.localScale;
-		transform.localScale = new Vector3(s.x - 0.1f, s.y - 0.1f, 1);
+
+		s = new Vector3(s.x - (0.1f * Time.deltaTime * 60), s.y - (0.1f * Time.deltaTime * 60), 1);
+		transform.localScale = s;
 
 		if (transform.localScale.x < 0.1f)
 		{
@@ -183,6 +186,7 @@ public class PieceObject : MonoBehaviour
 		gameObject.layer = LayerMask.NameToLayer("Select");
 	}
 
+	/*! タッチが離された時	*/
 	public void Relese()
 	{
 		mRender.sortingOrder = 0;
@@ -190,6 +194,7 @@ public class PieceObject : MonoBehaviour
 		SetPosition(mPos, 10);
 	}
 
+	/* ピースを殺す	*/
 	public void Death()
 	{
 		mState = PieceState.DEATH;
