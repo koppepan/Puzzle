@@ -1,5 +1,6 @@
 ﻿using UnityEngine;
 using System.Collections;
+using System.Collections.Generic;
 
 //===================================================
 /*!
@@ -9,61 +10,22 @@ using System.Collections;
  * @author	Daichi Horio
 */
 //===================================================
-public enum PieceColor
-{
-	NONE = 0,
-	Red,
-	Blue,
-	Green,
-	Yellow,
-	Purple,
-	Heart
-};
-
-public enum PieceDirction
-{
-	HEIGHT = 0,
-	WIDTH
-};
-
-public struct PiecePos
-{
-	public int x;
-	public int y;
-
-	public PiecePos(int i, int j)
-	{
-		x = i;
-		y = j;
-	}
-};
-
-public struct PieceDeathData
-{
-	public PiecePos Pos;
-	public PieceDirction Dir;
-	public int Count;
-
-	public PieceDeathData(PiecePos pos, PieceDirction dir, int count)
-	{
-		Pos = pos;
-		Dir = dir;
-		Count = count;
-	}
-};
-
 public class PuzzleController : MonoBehaviour
 {
-
-	private enum PuzzleState
+	private struct PieceDeathData
 	{
-		NONE,
-		SELECT,		// ピースの選択
-		MOVE,		// ピースの移動
-		JUDGE,		// ピース消すかの判定
-		DEATH,		// ピースを消す
-		DOWN,		// 隙間を埋める
-		END
+		public int ID;
+		public PiecePos Pos;
+		public PieceDirction Dir;
+		public int Count;
+
+		public PieceDeathData(int id, PiecePos pos, PieceDirction dir, int count)
+		{
+			ID = id;
+			Pos = pos;
+			Dir = dir;
+			Count = count;
+		}
 	};
 
 	public GameObject		PiecePrefab;		//!< ピースプレハブ
@@ -79,84 +41,26 @@ public class PuzzleController : MonoBehaviour
 	public float			InitMoveSpeed	=	1;	//!< 初期化時のピースの移動スピード
 	public float			NormalMoveSpeed	=	5;	//!< ノーマル時のピースの移動スピード
 
-
-	private PuzzleState		mState;		//!< 遷移
-
-
 	private PieceObject		mNowSelectPiece;					//!< 現在選択されているピースオブジェ
 
 	private PieceObject[,]	mPieces		= new PieceObject[Width, Height];	//!< ピース管理用
-	private ArrayList		mActivList	= new ArrayList();		//!< 現在動いているピースリスト
-
-	private Queue			mDeathList	= new Queue();		//!< 消すリスト
+	
+	private List<PieceObject>		mActivList	= new List<PieceObject>();		//!< 現在動いているピースリスト
+	private Queue<PieceDeathData>	mDeathList	= new Queue<PieceDeathData>();	//!< 消すリスト
+	
 
 	private float			mTime;	//!< タイムのワーク
 
 	// Use this for initialization
-	void Start()
+	void Awake()
 	{
-		mState = PuzzleState.SELECT;
-
 		Init();
 
-		while (!JudgeProcess())
+		while (JudgeProcess())
 		{
 			AllDestroy();
 			Init();
 		}
-	}
-
-
-	// Update is called once per frame
-	void Update()
-	{
-		switch (mState)
-		{
-			case PuzzleState.NONE:
-				break;
-
-			// ピース選択
-			case PuzzleState.SELECT:
-				if (SelectUpdate())
-					mState++;
-				break;
-
-			// ピース移動
-			case PuzzleState.MOVE:
-				if (MoveUpdate())
-					mState++;
-				break;
-
-			// 消すかどうか判定
-			case PuzzleState.JUDGE:
-				// 何もそろってなければセレクトへ
-				if (JudgeProcess())
-				{
-					mState = PuzzleState.SELECT;
-				}
-				else
-				{
-					mState = PuzzleState.DEATH;
-				}
-				break;
-
-			case PuzzleState.DEATH:
-				if (DeathUpdate())
-				{
-					DownProcess();
-					mState = PuzzleState.DOWN;
-				}
-				break;
-			case PuzzleState.DOWN:
-				if(mActivList.Count == 0)
-				{
-					mState = PuzzleState.JUDGE;
-				}
-				break;
-		}
-
-		// 各ピースの更新
-		PieceUpdate();
 	}
 
 	/*! 初期化  */
@@ -166,7 +70,7 @@ public class PuzzleController : MonoBehaviour
 		{
 			for (int j = 0; j < Height; j++)
 			{
-				PiecePos pos = new PiecePos(i, j + 5);
+				PiecePos pos = new PiecePos(i, j + Height);
 				mPieces[i, j] = PieceGenerate(pos);
 				mPieces[i, j].SetPosition(new PiecePos(i, j), InitMoveSpeed);
 				mActivList.Add(mPieces[i, j]);
@@ -180,7 +84,7 @@ public class PuzzleController : MonoBehaviour
 		mNowSelectPiece = null;
 		mActivList.Clear();
 		mDeathList.Clear();
-		
+
 		for (int i = 0; i < Width; i++)
 		{
 			for (int j = 0; j < Height; j++)
@@ -191,7 +95,71 @@ public class PuzzleController : MonoBehaviour
 		}
 	}
 
-	/*! ピースの生成 */
+	/*! パズル部分の更新
+		@param	nowState		現在の遷移
+		@param	mouseData		マウスの入力データ
+		@param	PuzzleState		遷移を返す
+	*/
+	public PuzzleState  SelfUpdate(PuzzleState nowState, MouseData mouseData)
+	{
+		switch (nowState)
+		{
+			case PuzzleState.NONE:
+				break;
+
+			// ピース選択
+			case PuzzleState.SELECT:
+				if (SelectUpdate(mouseData))
+					nowState++;
+				break;
+
+			// ピース移動
+			case PuzzleState.MOVE:
+				if (MoveUpdate(mouseData))
+					nowState++;
+				break;
+
+			// 消すかどうか判定
+			case PuzzleState.JUDGE:
+				// 何もそろってなければセレクトへ
+				if (JudgeProcess())
+					nowState = PuzzleState.DEATH;
+				else
+					nowState = PuzzleState.SELECT;
+
+				break;
+
+			// 揃っているピースを消す
+			case PuzzleState.DEATH:
+				if (DeathUpdate())
+				{
+					DownProcess();
+					nowState = PuzzleState.DOWN;
+				}
+				break;
+
+			// 隙間を埋めるためにピースを落とす
+			case PuzzleState.DOWN:
+				if(mActivList.Count == 0)
+					nowState = PuzzleState.JUDGE;
+
+				break;
+		}
+
+		// 各ピースの更新
+		PieceUpdate();
+
+		return nowState;
+	}
+
+	//===================================================
+	/*!
+　　 	@brief		ピースの生成
+　　 
+　　 	@date		2013/01/20
+　　 	@author		Daichi Horio
+　　*/
+	//===================================================
 	private PieceObject PieceGenerate(PiecePos initPos)
 	{
 		PieceObject p;
@@ -206,14 +174,21 @@ public class PuzzleController : MonoBehaviour
 		return p;
 	}
 
-	/*! マウスクリックしてオブジェクトを返す 
-		@return クリックされたオブジェクト
-	 */
-	private GameObject MouseUpdate()
+	//===================================================
+	/*!
+　　 	@brief		タッチ処理
+	 
+　　		@param		タッチされた座標
+		@return		クリックされたオブジェクト
+　　 	@date		2013/01/20
+　　 	@author		Daichi Horio
+　　*/
+	//===================================================
+	private GameObject MouseUpdate(Vector3 mousePos)
 	{
 		int mask = 1 << LayerMask.NameToLayer("Piece");
 
-		Vector2 worldPoint2d = Camera.main.ScreenToWorldPoint(Input.mousePosition);
+		Vector2 worldPoint2d = Camera.main.ScreenToWorldPoint(mousePos);
 		Collider2D collider2D = Physics2D.OverlapPoint(worldPoint2d, mask);
 
 		if (collider2D)
@@ -222,10 +197,16 @@ public class PuzzleController : MonoBehaviour
 		return null;
 	}
 
-	/*! 各ピースの更新 
-		動いてるピースだけ更新する
-	 */
-	private void PieceUpdate()
+	//===================================================
+	/*!
+　　 	@brief		各ピースの更新
+					アクティブなピースだけ更新
+	 
+　　 	@date		2013/01/20
+　　 	@author		Daichi Horio
+　　*/
+	//===================================================
+	public void PieceUpdate()
 	{
 		ArrayList deadList = new ArrayList();
 		foreach (PieceObject obj in mActivList)
@@ -247,14 +228,22 @@ public class PuzzleController : MonoBehaviour
 		}
 	}
 
-	/*! 移動させるピースの選択	 */
-	private bool SelectUpdate()
+	//===================================================
+	/*!
+　　 	@brief		移動させるピースの選択
+	 
+		@param		MouseData	マウスの座標データ
+　　 	@date		2013/01/20
+　　 	@author		Daichi Horio
+　　*/
+	//===================================================
+	private bool SelectUpdate(MouseData mouseData)
 	{
 		GameObject obj = null;
 
-		if (Input.GetMouseButtonDown(0))
+		if (mouseData.down)
 		{
-			obj = MouseUpdate();
+			obj = MouseUpdate(mouseData.pos);
 		}
 
 		if (obj == null)
@@ -267,10 +256,18 @@ public class PuzzleController : MonoBehaviour
 		return true;
 	}
 
-	/*! ピースの移動、入れ替え	 */
-	private bool MoveUpdate()
+	//===================================================
+	/*!
+　　 	@brief		ピースの移動＆入れ替え
+			
+		@param		MouseData	マウスのデータ
+　　 	@date		2013/01/20
+　　 	@author		Daichi Horio
+　　*/
+	//===================================================
+	private bool MoveUpdate(MouseData mouseData)
 	{
-		GameObject obj = MouseUpdate();
+		GameObject obj = MouseUpdate(mouseData.pos);
 
 		// 他のピースに触れたら選択しているピースと位置入れ替え
 		if (obj != null)
@@ -282,7 +279,7 @@ public class PuzzleController : MonoBehaviour
 			}
 		}
 
-		if (Input.GetMouseButtonUp(0) || mNowSelectPiece.transform.position.y > (PieceLength * 5))
+		if (mouseData.up || mNowSelectPiece.transform.position.y > (PieceLength * Height))
 		{
 			mNowSelectPiece.Relese();
 			return true;
@@ -291,7 +288,14 @@ public class PuzzleController : MonoBehaviour
 		return false;
 	}
 
-	/*! ピースの入れ替え	 */
+	//===================================================
+	/*!
+　　 	@brief		ピースの入れ替え
+	 
+　　 	@date		2013/01/20
+　　 	@author		Daichi Horio
+　　*/
+	//===================================================
 	private void ReplacePiece(PieceObject now, PieceObject any)
 	{
 		PiecePos pos1 = now.PicecPosition;
@@ -307,10 +311,19 @@ public class PuzzleController : MonoBehaviour
 		mActivList.Add(any);
 	}
 
-	/*! ピースがそろっているか判定	 */
+	//===================================================
+	/*!
+　　 	@brief		ピースがそろっているか判定
+	 
+　　 	@date		2013/01/29
+　　 	@author		Daichi Horio
+　　*/
+	//===================================================
 	private bool JudgeProcess()
 	{
 		PiecePos nowPos;
+		int id = 0;
+		List<PieceDeathData> list = new List<PieceDeathData>();
 
 		for (int j = 0; j < Height; j++)
 		{
@@ -323,9 +336,10 @@ public class PuzzleController : MonoBehaviour
 					int val = SeekColorX(nowPos, mPieces[i, j].Color, 0);
 					if (val >= DeleteCount)
 					{
-						PieceDeathData data = new PieceDeathData(nowPos, PieceDirction.WIDTH, val);
-						mDeathList.Enqueue(data);
-
+						PieceDeathData data = new PieceDeathData(id, nowPos, PieceDirction.WIDTH, val);
+						list.Add(data);
+						
+						id++;
 						i += (val - 1);
 					}
 				}
@@ -344,26 +358,88 @@ public class PuzzleController : MonoBehaviour
 					int val = SeekColorY(nowPos, mPieces[i, j].Color, 0);
 					if (val >= DeleteCount)
 					{
-						PieceDeathData data = new PieceDeathData(nowPos, PieceDirction.HEIGHT, val);
-						mDeathList.Enqueue(data);
+						PieceDeathData data = new PieceDeathData(id, nowPos, PieceDirction.HEIGHT, val);
+						list.Add(data);
 
+						id++;
 						j += (val - 1);
 					}
 				}
 			}
 		}
 
-		if (mDeathList.Count != 0)
-		{
-			return false;
-		}
-		else
-		{
-			return true;
-		}
+		return SortDeathPieceData(list);
 	}
 
-	/*! X軸の探索	 */
+	//===================================================
+	/*!
+　　 	@brief		消すピースのデータを並び替え
+	 
+　　 	@date		2013/01/30
+　　 	@author		Daichi Horio
+　　*/
+	//===================================================
+	private bool SortDeathPieceData(List<PieceDeathData> list)
+	{
+		if (list.Count == 0)
+			return false;
+
+		/*for (int i = 0; i < list.Count; i++)
+		{
+			for (int j = 0; j < list.Count; j++)
+			{
+				if (i != j)
+				{
+					PieceDeathData data1 = list[i];
+					PieceDeathData data2 = list[j];
+
+					if (JudgeOverLap(data1, data2))
+					{
+						data2.ID = data1.ID;
+						list[i] = data1;
+						list[j] = data2;
+					}
+				}
+			}
+		}*/
+
+		
+
+		foreach (PieceDeathData obj in list)
+		{
+			mDeathList.Enqueue(obj);
+		}
+
+		return true;
+	}
+
+	//===================================================
+	/*!
+　　 	@brief		ピースの重なり等を判定
+	 
+　　 	@date		2013/01/30
+　　 	@author		Daichi Horio
+　　*/
+	//===================================================
+	private bool JudgeOverLap(PieceDeathData data1, PieceDeathData data2)
+	{
+		PieceObject p1 = mPieces[data1.Pos.x, data1.Pos.y];
+		PieceObject p2 = mPieces[data2.Pos.x, data1.Pos.y];
+
+		if (p1.Color != p2.Color)
+			return false;
+
+		return true;
+	}
+
+	//===================================================
+	/*!
+　　 	@brief		X軸の探索
+	 
+　　 	@date		2013/01/20
+　　 	@author		Daichi Horio
+　　*/
+	//===================================================
 	private int SeekColorX(PiecePos pos, PieceColor color, int count)
 	{
 		if (mPieces[pos.x, pos.y] == null)
@@ -380,7 +456,14 @@ public class PuzzleController : MonoBehaviour
 		return count;
 	}
 
-	/*! Y軸の探索	 */
+	//===================================================
+	/*!
+　　 	@brief		Y軸の探索
+	 
+　　 	@date		2013/01/20
+　　 	@author		Daichi Horio
+　　*/
+	//===================================================
 	private int SeekColorY(PiecePos pos, PieceColor color, int count)
 	{
 		if (mPieces[pos.x, pos.y] == null)
@@ -397,34 +480,48 @@ public class PuzzleController : MonoBehaviour
 		return count;
 	}
 
-	/*! ピースの削除 */
-	private void DeathPiece(PiecePos pos, PieceDirction dir, int count)
+	//===================================================
+	/*!
+　　 	@brief		ピースの削除
+	 
+　　 	@date		2013/01/20
+　　 	@author		Daichi Horio
+　　*/
+	//===================================================
+	private void DeathPiece(PieceDeathData data)
 	{
-		if (dir == PieceDirction.WIDTH)
+		if (data.Dir == PieceDirction.WIDTH)
 		{
-			for (int i = 0; i < count; i++)
+			for (int i = 0; i < data.Count; i++)
 			{
-				if (mPieces[pos.x + i, pos.y] != null)
+				if (mPieces[data.Pos.x + i, data.Pos.y] != null)
 				{
-					mPieces[pos.x + i, pos.y].Death();
-					mActivList.Add(mPieces[pos.x + i, pos.y]);
+					mPieces[data.Pos.x + i, data.Pos.y].Death();
+					mActivList.Add(mPieces[data.Pos.x + i, data.Pos.y]);
 				}
 			}
 		}
 		else
 		{
-			for (int i = 0; i < count; i++)
+			for (int i = 0; i < data.Count; i++)
 			{
-				if (mPieces[pos.x, pos.y + i] != null)
+				if (mPieces[data.Pos.x, data.Pos.y + i] != null)
 				{
-					mPieces[pos.x, pos.y + i].Death();
-					mActivList.Add(mPieces[pos.x, pos.y + i]);
+					mPieces[data.Pos.x, data.Pos.y + i].Death();
+					mActivList.Add(mPieces[data.Pos.x, data.Pos.y + i]);
 				}
 			}
 		}
 	}
 
-	// 揃ってるのが全部消えるまで
+	//===================================================
+	/*!
+　　 	@brief		揃ってるピース消す
+	 
+　　 	@date		2013/01/20
+　　 	@author		Daichi Horio
+　　*/
+	//===================================================
 	private bool DeathUpdate()
 	{
 		mTime += Time.deltaTime;
@@ -434,8 +531,8 @@ public class PuzzleController : MonoBehaviour
 
 			if (mDeathList.Count != 0)
 			{
-				PieceDeathData p = (PieceDeathData)mDeathList.Dequeue();
-				DeathPiece(p.Pos, p.Dir, p.Count);
+				PieceDeathData p = mDeathList.Dequeue();
+				DeathPiece(p);
 			}
 			else
 			{
@@ -445,7 +542,14 @@ public class PuzzleController : MonoBehaviour
 		return false;
 	}
 
-	// 空いてるところを埋める
+	//===================================================
+	/*!
+　　 	@brief		空いてるところを埋める
+	 
+　　 	@date		2013/01/29
+　　 	@author		Daichi Horio
+　　*/
+	//===================================================
 	private void DownProcess()
 	{
 		int count = 0;
@@ -460,7 +564,14 @@ public class PuzzleController : MonoBehaviour
 		}
 	}
 
-	// 下が空いてるピースを落とす
+	//===================================================
+	/*!
+　　 	@brief		ピースを落とす
+	 
+　　 	@date		2013/01/29
+　　 	@author		Daichi Horio
+　　*/
+	//===================================================
 	private int LineDown(int line)
 	{
 		int count = 0;
@@ -486,7 +597,14 @@ public class PuzzleController : MonoBehaviour
 		return count;
 	}
 
-	// 隙間を新しく作ったピースで埋める
+	//===================================================
+	/*!
+　　 	@brief		新しく作ったピースで埋める
+	 
+　　 	@date		2013/01/29
+　　 	@author		Daichi Horio
+　　*/
+	//===================================================
 	private void FillPiece(int line, int count)
 	{
 		if (count == Height)
@@ -505,7 +623,14 @@ public class PuzzleController : MonoBehaviour
 		}
 	}
 
-	// 下が何個空いてるか探索
+	//===================================================
+	/*!
+　　 	@brief		下が何個空いてるか探索
+	 
+　　 	@date		2013/01/29
+　　 	@author		Daichi Horio
+　　*/
+	//===================================================
 	private int SeekDown(PiecePos pos, int count)
 	{
 		if (pos.y == 0)
