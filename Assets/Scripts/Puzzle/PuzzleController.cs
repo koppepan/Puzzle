@@ -54,7 +54,7 @@ public class PuzzleController : MonoBehaviour
 		mJudgeCon = new PuzzleJudgment(this, Height, Width, DeleteCount);
 		Init();
 
-		while (mJudgeCon.AllJudge())
+		while (mJudgeCon.AllJudge() != null)
 		{
 			AllDestroy();
 			Init();
@@ -119,7 +119,7 @@ public class PuzzleController : MonoBehaviour
 			// 消すかどうか判定
 			case PuzzleState.JUDGE:
 				// 何もそろってなければセレクトへ
-				if(mJudgeCon.AllJudge())
+				if(mJudgeCon.AllJudge() != null)
 					nowState = PuzzleState.DEATH;
 				else
 					nowState = PuzzleState.SELECT;
@@ -238,7 +238,18 @@ public class PuzzleController : MonoBehaviour
 			}
 			else
 			{
-				return true;
+				List<PiecePos> p = mJudgeCon.AllJudge();
+				if (p != null)
+				{
+					if (!DeathPiece(p))
+					{
+						mTime = DeleteTime;
+					}
+				}
+				else
+				{
+					return true;
+				}
 			}
 		}
 		return false;

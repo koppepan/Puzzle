@@ -4,7 +4,7 @@ using System.Collections.Generic;
 
 //===================================================
 /*!
- * @brief	ピースの移動を管理
+ * @brief	ピースの選択を管理
  * 
  * @date	2014/03/19
  * @author	Daichi Horio

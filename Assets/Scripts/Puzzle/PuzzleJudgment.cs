@@ -39,12 +39,11 @@ public class PuzzleJudgment {
 　　 	@author		Daichi Horio
 　　*/
 	//===================================================
-	public bool AllJudge()
+	public List<PiecePos> AllJudge()
 	{
 		List<PiecePos> list = new List<PiecePos>();
 		PiecePos nowPos;
 
-		// x軸の判定
 		for (int j = 0; j < Height; j++)
 		{
 			for (int i = 0; i < Width; i++)
@@ -52,37 +51,17 @@ public class PuzzleJudgment {
 				if (mRoot.PiecesList[i, j] != null)
 				{
 					nowPos = new PiecePos(i, j);
-					// X軸の探索
-					list = SeekProcessX(list, nowPos, true);
-					if (list.Count >= DeleteCount)
+					list = Judge(nowPos);
+					if (list.Count != 0)
 					{
-						return true;
+						return list;
 					}
 					list.Clear();
 				}
 			}
 		}
 
-		// y軸の判定
-		for (int i = 0; i < Width; i++)
-		{
-			for (int j = 0; j < Height; j++)
-			{
-				if (mRoot.PiecesList[i, j] != null)
-				{
-					nowPos = new PiecePos(i, j);
-					// Y軸の探索
-					list = SeekProcessY(list, nowPos, true);
-					if (list.Count >= DeleteCount)
-					{
-						return true;
-					}
-					list.Clear();
-				}
-			}
-		}
-
-		return false;
+		return null;
 	}
 
 	//===================================================
@@ -96,37 +75,14 @@ public class PuzzleJudgment {
 	public List<PiecePos> Judge(PiecePos pos)
 	{
 		List<PiecePos> list = new List<PiecePos>();
-		List<PiecePos> tempList = new List<PiecePos>();
 
 		if (mRoot.PiecesList[pos.x, pos.y] == null)
 		{
 			return list;
 		}
 
-		tempList = SeekX(tempList, pos);
-		list = ListAdd(list, tempList);
-		
-		foreach (var obj in tempList)
-		{
-			List<PiecePos> temp = new List<PiecePos>();
-			temp = SeekY(temp, obj);
-			list = ListAdd(list, temp);
-		}
-
-		tempList.Clear();
-
-
-		tempList = SeekY(tempList, pos);
-		list = ListAdd(list, tempList);
-
-		foreach (var obj in tempList)
-		{
-			List<PiecePos> temp = new List<PiecePos>();
-			temp = SeekX(temp, obj);
-			list = ListAdd(list, temp);
-		}
-		
-		tempList.Clear();
+		list = SeekX(list, pos);
+		list = SeekY(list, pos);
 
 		return list;
 	}
@@ -139,16 +95,27 @@ public class PuzzleJudgment {
 　　 	@author		Daichi Horio
 　　*/
 	//===================================================
-	private List<PiecePos> SeekX(List<PiecePos> list, PiecePos pos)
+	private List<PiecePos> SeekX(List<PiecePos> origin, PiecePos pos)
 	{
-		list = SeekProcessX(list, pos, true);
-		list = SeekProcessX(list, pos, false);
+		List<PiecePos> tempList = new List<PiecePos>();
 
-		if (list.Count < DeleteCount)
+		tempList = SeekProcessX(tempList, pos, true);
+		tempList = SeekProcessX(tempList, pos, false);
+
+		if (tempList.Count >= DeleteCount)
 		{
-			list.Clear();
+			origin = ListAdd(origin, tempList);
 		}
-		return list;
+
+		foreach (var obj in tempList)
+		{
+			if (obj.x != pos.x && obj.y != pos.y)
+			{
+				origin = SeekY(origin, obj);
+			}
+		}
+
+		return origin;
 	}
 
 	//===================================================
@@ -159,16 +126,27 @@ public class PuzzleJudgment {
 　　 	@author		Daichi Horio
 　　*/
 	//===================================================
-	private List<PiecePos> SeekY(List<PiecePos> list, PiecePos pos)
+	private List<PiecePos> SeekY(List<PiecePos> origin, PiecePos pos)
 	{
-		list = SeekProcessY(list, pos, true);
-		list = SeekProcessY(list, pos, false);
+		List<PiecePos> tempList = new List<PiecePos>();
 
-		if (list.Count < DeleteCount)
+		tempList = SeekProcessY(tempList, pos, true);
+		tempList = SeekProcessY(tempList, pos, false);
+
+		if (tempList.Count >= DeleteCount)
 		{
-			list.Clear();
+			origin = ListAdd(origin, tempList);
 		}
-		return list;
+
+		foreach (var obj in tempList)
+		{
+			if (obj.x != pos.x && obj.y != pos.y)
+			{
+				origin = SeekX(origin, obj);
+			}
+		}
+
+		return origin;
 	}
 
 	//===================================================
