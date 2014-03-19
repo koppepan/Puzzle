@@ -52,7 +52,7 @@ public class PieceObject : MonoBehaviour
 		return (int)mState;
 	}
 
-	public bool Dead
+	public bool DeadFlg
 	{
 		get { return mDead; }
 	}
@@ -182,23 +182,35 @@ public class PieceObject : MonoBehaviour
 	public void Catch()
 	{
 		mState = PieceState.SELECT;
+
+		// 描画順を変える
 		mRender.sortingOrder = 1;
+		
+		// 当たり判定のレイヤーを変える
 		gameObject.layer = LayerMask.NameToLayer("Select");
 	}
 
 	/*! タッチが離された時	*/
 	public void Relese()
 	{
-		mRender.sortingOrder = 0;
-		gameObject.layer = LayerMask.NameToLayer("Piece");
 		SetPosition(mPos, 10);
+
+		// 描画順を変える
+		mRender.sortingOrder = 0;
+
+		// 当たり判定のレイヤーを変える
+		gameObject.layer = LayerMask.NameToLayer("Piece");
 	}
 
 	/* ピースを殺す	*/
 	public void Death()
 	{
 		mState = PieceState.DEATH;
+
+		// 描画順を変える
 		mRender.sortingOrder = -1;
+
+		// 当たり判定のレイヤーを変える
 		gameObject.layer = LayerMask.NameToLayer("Default");
 	}
 }

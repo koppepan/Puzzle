@@ -52,3 +52,17 @@ public struct PiecePos
 		y = j;
 	}
 };
+
+public struct PieceDeathData
+{
+	public PiecePos Pos;
+	public PieceDirction Dir;
+	public int Count;
+
+	public PieceDeathData(PiecePos pos, PieceDirction dir, int count)
+	{
+		Pos = pos;
+		Dir = dir;
+		Count = count;
+	}
+};
