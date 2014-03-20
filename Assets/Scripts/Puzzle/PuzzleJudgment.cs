@@ -75,6 +75,7 @@ public class PuzzleJudgment {
 	public List<PiecePos> Judge(PiecePos pos)
 	{
 		List<PiecePos> list = new List<PiecePos>();
+		List<PiecePos> tempList = new List<PiecePos>();
 
 		if (mRoot.PiecesList[pos.x, pos.y] == null)
 		{
@@ -82,7 +83,12 @@ public class PuzzleJudgment {
 		}
 
 		list = SeekX(list, pos);
+		list = ListAdd(list, tempList);
+		tempList.Clear();
+
 		list = SeekY(list, pos);
+		list = ListAdd(list, tempList);
+		tempList.Clear();
 
 		return list;
 	}
@@ -99,17 +105,18 @@ public class PuzzleJudgment {
 	{
 		List<PiecePos> tempList = new List<PiecePos>();
 
+		// 右方向に探索
 		tempList = SeekProcessX(tempList, pos, true);
+		// 左方向に探索
 		tempList = SeekProcessX(tempList, pos, false);
 
 		if (tempList.Count >= DeleteCount)
 		{
 			origin = ListAdd(origin, tempList);
-		}
 
-		foreach (var obj in tempList)
-		{
-			if (obj.x != pos.x && obj.y != pos.y)
+			tempList.Remove(pos);
+
+			foreach (var obj in tempList)
 			{
 				origin = SeekY(origin, obj);
 			}
@@ -130,28 +137,29 @@ public class PuzzleJudgment {
 	{
 		List<PiecePos> tempList = new List<PiecePos>();
 
+		// 上方向に探索
 		tempList = SeekProcessY(tempList, pos, true);
+		// 下方向に探索
 		tempList = SeekProcessY(tempList, pos, false);
 
 		if (tempList.Count >= DeleteCount)
 		{
 			origin = ListAdd(origin, tempList);
-		}
 
-		foreach (var obj in tempList)
-		{
-			if (obj.x != pos.x && obj.y != pos.y)
+			tempList.Remove(pos);
+
+			foreach (var obj in tempList)
 			{
 				origin = SeekX(origin, obj);
 			}
 		}
-
+		
 		return origin;
 	}
 
 	//===================================================
 	/*!
-　　 	@brief		リストに加える
+　　 	@brief		まだリスト無いか確認してに加える
 	 
 　　 	@date		2014/03/19
 　　 	@author		Daichi Horio
@@ -166,6 +174,14 @@ public class PuzzleJudgment {
 		return list;
 	}
 
+	//===================================================
+	/*!
+　　 	@brief		リストの合成
+	 
+　　 	@date		2014/03/19
+　　 	@author		Daichi Horio
+　　*/
+	//===================================================
 	private List<PiecePos> ListAdd(List<PiecePos> origin, List<PiecePos> other)
 	{
 		foreach (var pos in other)
@@ -197,6 +213,7 @@ public class PuzzleJudgment {
 		if (mRoot.PiecesList[pos.x, pos.y] == null)
 			return list;
 
+		// 一番最初に自分自身の座標をリストに追加
 		if (list.Count == 0)
 		{
 			list = ListAdd(list, pos);
@@ -204,29 +221,23 @@ public class PuzzleJudgment {
 
 		PieceColor color = mRoot.PiecesList[pos.x, pos.y].Color;
 
-		if (dir && pos.x < Width - 1)
-		{
-			if (mRoot.PiecesList[pos.x + 1, pos.y] == null)
-			{
-				return list;
-			}
-			else if (mRoot.PiecesList[pos.x + 1, pos.y].Color == color)
-			{
-				list = ListAdd(list, new PiecePos(pos.x + 1, pos.y));
-				list = SeekProcessX(list, new PiecePos(pos.x + 1, pos.y), true);
-			}
-		}
+		PiecePos temp;
+		// 方向によってどっちを探索するか
+		if (dir)
+			temp = new PiecePos(pos.x + 1, pos.y);
+		else
+			temp = new PiecePos(pos.x - 1, pos.y);
 
-		if (!dir && pos.x > 0)
+		if (pos.x < Width - 1 && pos.x > 0)
 		{
-			if (mRoot.PiecesList[pos.x - 1, pos.y] == null)
+			if (mRoot.PiecesList[temp.x, temp.y] == null)
 			{
 				return list;
 			}
-			else if (mRoot.PiecesList[pos.x - 1, pos.y].Color == color)
+			else if (mRoot.PiecesList[temp.x, temp.y].Color == color)
 			{
-				list = ListAdd(list, new PiecePos(pos.x - 1, pos.y));
-				list = SeekProcessX(list, new PiecePos(pos.x - 1, pos.y), false);
+				list = ListAdd(list, temp);
+				list = SeekProcessX(list, temp, dir);
 			}
 		}
 		return list;
@@ -250,36 +261,31 @@ public class PuzzleJudgment {
 		if (mRoot.PiecesList[pos.x, pos.y] == null)
 			return list;
 
+		// 一番最初に自分自身の座標をリストに追加
 		if (list.Count == 0)
 		{
 			list = ListAdd(list, pos);
 		}
 
 		PieceColor color = mRoot.PiecesList[pos.x, pos.y].Color;
+		
+		PiecePos temp;
+		// 方向によってどっちを探索するか
+		if (dir)
+			temp = new PiecePos(pos.x, pos.y + 1);
+		else
+			temp = new PiecePos(pos.x, pos.y - 1);
 
-		if (dir && pos.y < Height - 1)
+		if (pos.y < Height - 1 && pos.y > 0)
 		{
-			if (mRoot.PiecesList[pos.x, pos.y + 1] == null)
+			if (mRoot.PiecesList[temp.x, temp.y] == null)
 			{
 				return list;
 			}
-			else if (mRoot.PiecesList[pos.x, pos.y + 1].Color == color)
+			else if (mRoot.PiecesList[temp.x, temp.y].Color == color)
 			{
-				list = ListAdd(list, new PiecePos(pos.x, pos.y + 1));
-				list = SeekProcessY(list, new PiecePos(pos.x, pos.y + 1), true);
-			}
-		}
-
-		if (!dir && pos.y > 0)
-		{
-			if (mRoot.PiecesList[pos.x, pos.y - 1] == null)
-			{
-				return list;
-			}
-			else if (mRoot.PiecesList[pos.x, pos.y - 1].Color == color)
-			{
-				list = ListAdd(list, new PiecePos(pos.x, pos.y - 1));
-				list = SeekProcessY(list, new PiecePos(pos.x, pos.y - 1), false);
+				list = ListAdd(list, temp);
+				list = SeekProcessY(list, temp, dir);
 			}
 		}
 		return list;

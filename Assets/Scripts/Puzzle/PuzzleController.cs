@@ -137,7 +137,7 @@ public class PuzzleController : MonoBehaviour
 
 			// 隙間を埋めるためにピースを落とす
 			case PuzzleState.DOWN:
-				if(mActivList.Count == 0)
+				if(mActivList.Count == 0 && mDeathList.Count == 0)
 					nowState = PuzzleState.JUDGE;
 
 				break;
@@ -197,7 +197,6 @@ public class PuzzleController : MonoBehaviour
 			mActivList.Remove(obj);
 			if (obj.DeadFlg)
 			{
-				mPieces[obj.PicecPosition.x, obj.PicecPosition.y] = null;
 				Destroy(obj.gameObject);
 			}
 		}
@@ -275,6 +274,7 @@ public class PuzzleController : MonoBehaviour
 			{
 				mPieces[pos.x, pos.y].Death();
 				mActivList.Add(mPieces[pos.x, pos.y]);
+				mPieces[pos.x, pos.y] = null;
 			}
 		}
 
